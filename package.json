@@ -14,9 +14,12 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
+    "@types/better-sqlite3": "^7.6.13",
     "@upstash/redis": "^1.37.0",
+    "better-sqlite3": "^12.8.0",
     "bullmq": "^5.73.0",
     "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.7.0",
     "next": "16.2.2",
     "postgres": "^3.4.8",
     "react": "19.2.4",

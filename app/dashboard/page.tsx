@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useDashboard } from './layout';
+import RealTimeFeed from '@/components/RealTimeFeed';
+import MLInsights from '@/components/MLInsights';
 import {
   TrendingUp, TrendingDown, DollarSign, Package, Users2,
-  Bell, Brain, Zap, AlertTriangle, ArrowRight, Globe,
+  Bell, Brain, Zap, AlertTriangle, ArrowRight, Globe, Sparkles, Wifi,
 } from 'lucide-react';
 
 interface Product {
@@ -77,6 +79,16 @@ export default function DashboardPage() {
             <p className={`text-2xl font-bold text-${kpi.color}-600 mt-1`}>{kpi.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Real-Time Live Feed */}
+      <div>
+        <RealTimeFeed orgId={orgId || undefined} maxVisible={8} />
+      </div>
+
+      {/* ML Pricing Insights */}
+      <div>
+        <MLInsights orgId={orgId || undefined} maxProducts={3} />
       </div>
 
       {/* Recent Products */}

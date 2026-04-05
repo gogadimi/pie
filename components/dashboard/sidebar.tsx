@@ -13,6 +13,8 @@ import {
   ChevronRight,
   BarChart3,
   Globe,
+  Brain,
+  TrendingUp,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -34,24 +36,34 @@ const navItems = [
     icon: Users2,
   },
   {
-    label: "Scraping",
-    href: "/dashboard/scraping",
-    icon: Globe,
-  },
-  {
     label: "Price Map",
     href: "/dashboard/price-map",
     icon: Map,
   },
   {
-    label: "Alerts",
-    href: "/dashboard/alerts",
-    icon: Bell,
+    label: "Scraping",
+    href: "/dashboard/scraping",
+    icon: Globe,
+  },
+  {
+    label: "AI Agent",
+    href: "/dashboard/recommendations",
+    icon: Brain,
+  },
+  {
+    label: "Simulator",
+    href: "/dashboard/simulator",
+    icon: BarChart3,
   },
   {
     label: "Analytics",
     href: "/dashboard/analytics",
-    icon: BarChart3,
+    icon: TrendingUp,
+  },
+  {
+    label: "Alerts",
+    href: "/dashboard/alerts",
+    icon: Bell,
   },
   {
     label: "Settings",

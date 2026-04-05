@@ -43,3 +43,7 @@ body {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+@media (max-width: 768px) { main { padding-bottom: 80px; } }
+html, body { -webkit-tap-highlight-color: transparent; overflow-x: hidden; }

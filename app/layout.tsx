@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Monitor competitor prices, optimize your pricing strategy, and maximize revenue with AI-powered insights.",
 };
 
+import { PWARegistration } from '@/components/pwa/register';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +28,8 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <body className="min-h-screen bg-white dark:bg-slate-950">{children}</body>
+        <body className="min-h-screen bg-white dark:bg-slate-950">{children}
+      <PWARegistration /></body>
       </html>
     </ClerkProvider>
   );

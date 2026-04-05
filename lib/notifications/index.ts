@@ -16,11 +16,25 @@ export interface Notification {
   metadata?: Record<string, any>;
 }
 
+export interface NotificationInput {
+  title: string;
+  message: string;
+  type?: 'info' | 'warning' | 'critical';
+  timestamp?: string;
+  metadata?: Record<string, any>;
+}
+
 /** Send notifications across all configured channels */
 export async function sendNotification(
-  notification: Notification,
+  input: NotificationInput,
   channels: NotificationChannel[] = ['email', 'slack', 'telegram', 'webhook']
 ) {
+  const notification: Notification = {
+    id: Math.random().toString(36).substr(2, 9),
+    ...input,
+    type: input.type || 'info',
+    timestamp: input.timestamp || new Date().toISOString(),
+  };
   const results = await Promise.allSettled(channels.map(ch => sendViaChannel(ch, notification)));
   return results;
 }

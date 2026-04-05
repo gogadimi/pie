@@ -1,4 +1,5 @@
 'use client';
+import { MobileNav } from '@/components/responsive/mobile-nav';
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
@@ -170,6 +171,7 @@ export default function DashboardLayout({
           </main>
         </div>
       </div>
+      <MobileNav />
     </DashboardContext.Provider>
   );
 }

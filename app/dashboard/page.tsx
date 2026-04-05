@@ -1,295 +1,182 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
+import { useDashboard } from './layout';
 import {
-  Package,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Bell,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
-import { StatCard, Card, Badge } from "@/components/ui/common";
+  TrendingUp, TrendingDown, DollarSign, Package, Users2,
+  Bell, Brain, Zap, AlertTriangle, ArrowRight, Globe,
+} from 'lucide-react';
 
 interface Product {
   id: string;
   name: string;
-  currentPrice: string;
-  priceChange7d: number;
-  lastScraped: string;
-  competitorCount: number;
+  sku: string | null;
+  currentPrice: string | null;
+  costPrice: string | null;
+  currency: string;
+  category: string | null;
+  createdAt: string | null;
 }
 
 export default function DashboardPage() {
+  const { orgId, stats, refreshStats } = useDashboard();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchProducts = useCallback(() => {
     setLoading(true);
-    fetch("/api/products?status=active")
-      .then((r) => r.json())
-      .then((data) => {
-        setProducts(data.data.slice(0, 4) ?? []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    fetch(`/api/products?orgId=${orgId}&limit=5`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setProducts(data.products || []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [orgId]);
+
+  useEffect(() => {
+    fetchProducts();
+    refreshStats();
+  }, [fetchProducts, refreshStats]);
+
+  const margin = (price: string | null, cost: string | null) => {
+    if (!price || !cost || parseFloat(price) === 0) return null;
+    return ((parseFloat(price) - parseFloat(cost)) / parseFloat(price) * 100).toFixed(1);
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Page heading */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Overview</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Track your pricing performance and competitor landscape.
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Overview of your pricing intelligence</p>
+        </div>
+        <Link
+          href="/dashboard/products"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
+        >
+          <Package className="w-4 h-4" /> Add Products <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Tracked Products"
-          value="24"
-          change="3 new"
-          icon={<Package className="w-5 h-5" />}
-          changeType="positive"
-        />
-        <StatCard
-          title="Avg. Margin"
-          value="52.4%"
-          change="2.1%"
-          icon={<TrendingUp className="w-5 h-5" />}
-          changeType="positive"
-        />
-        <StatCard
-          title="Price Changes (7d)"
-          value="7"
-          change="3 below market"
-          icon={<TrendingDown className="w-5 h-5" />}
-          changeType="negative"
-        />
-        <StatCard
-          title="Revenue Impact"
-          value="€12,450"
-          change="8.3%"
-          icon={<DollarSign className="w-5 h-5" />}
-          changeType="positive"
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        {[
+          { label: 'Products', value: stats?.totalProducts || 0, icon: Package, color: 'indigo' },
+          { label: 'Competitors', value: stats?.totalCompetitors || 0, icon: Users2, color: 'emerald' },
+          { label: 'Price Checks', value: stats?.priceUpdatesLast7d || 0, icon: Zap, color: 'amber' },
+          { label: 'Active Jobs', value: stats?.activeJobs || 0, icon: TrendingUp, color: 'blue' },
+          { label: 'Unread Alerts', value: stats?.unreadAlerts || 0, icon: Bell, color: 'red' },
+          { label: 'Pending AI', value: stats?.pendingRecommendations || 0, icon: Brain, color: 'violet' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <kpi.icon className={`w-5 h-5 text-${kpi.color}-500`} />
+            </div>
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{kpi.label}</p>
+            <p className={`text-2xl font-bold text-${kpi.color}-600 mt-1`}>{kpi.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent price changes */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900">
-              Tracked Products
-            </h3>
-            <Link
-              href="/dashboard/products"
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1"
-            >
-              View all <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          {loading ? (
-            <div className="p-5 animate-pulse space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-200" />
-                    <div>
-                      <div className="h-3.5 w-48 rounded bg-slate-200" />
-                      <div className="h-3 w-16 rounded bg-slate-100 mt-1.5" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="h-3.5 w-14 rounded bg-slate-200" />
-                    <div className="h-3.5 w-12 rounded bg-slate-200" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              No products found. Add your first product to get started.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {products.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/dashboard/products/${p.id}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0 group-hover:from-indigo-50 group-hover:to-indigo-100 transition-colors">
-                      <Package className="w-4 h-4 text-slate-500 group-hover:text-indigo-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
-                        {p.name}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {p.competitorCount} competitors &middot;
-                        Last updated{" "}
-                        {p.lastScraped
-                          ? new Date(p.lastScraped).toLocaleDateString()
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 shrink-0 ml-3">
-                    <span className="text-sm font-semibold text-slate-900 tabular-nums">
-                      €{p.currentPrice}
-                    </span>
-                    <Badge
-                      variant={
-                        p.priceChange7d > 0
-                          ? "success"
-                          : p.priceChange7d < 0
-                            ? "danger"
-                            : "default"
-                      }
-                    >
-                      <span className="inline-flex items-center gap-0.5">
-                        {p.priceChange7d > 0 ? (
-                          <ArrowUpRight className="w-3 h-3" />
-                        ) : p.priceChange7d < 0 ? (
-                          <ArrowDownRight className="w-3 h-3" />
-                        ) : null}
-                        {p.priceChange7d >= 0
-                          ? "+"
-                          : ""}
-                        {p.priceChange7d.toFixed(1)}%
-                      </span>
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {/* Alerts + Quick Actions */}
-        <Card>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900">Recent Alerts</h3>
-          </div>
-          <div className="divide-y divide-slate-100">
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                <TrendingDown className="w-4 h-4 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Competitor price drop detected
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Acme Corp lowered{" "}
-                  <span className="font-medium text-slate-700">
-                    Wireless Keyboard
-                  </span>{" "}
-                  by 12%
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  2 hours ago
-                </p>
-              </div>
-            </div>
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
-                <Bell className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Out of stock alert
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  <span className="font-medium text-slate-700">
-                    Standing Desk
-                  </span>{" "}
-                  is no longer available at DeskPro
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  5 hours ago
-                </p>
-              </div>
-            </div>
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Price recommendation
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  AI suggests raising{" "}
-                  <span className="font-medium text-slate-700">
-                    USB-C Dock
-                  </span>{" "}
-                  by 6.5%
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  1 day ago
-                </p>
-              </div>
-            </div>
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                <Package className="w-4 h-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  New competitor detected
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Added{" "}
-                  <span className="font-medium text-slate-700">
-                    TechGear.eu
-                  </span>{" "}
-                  to tracking list
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  2 days ago
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Quick stats bar */}
-      <Card>
-        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-5 divide-x divide-slate-100">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">47</p>
-            <p className="text-xs text-slate-500 mt-0.5">Total Competitors</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">1,240</p>
-            <p className="text-xs text-slate-500 mt-0.5">Prices Scraped</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">98.2%</p>
-            <p className="text-xs text-slate-500 mt-0.5">Scrape Success</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">€3,200</p>
-            <p className="text-xs text-slate-500 mt-0.5">Est. Monthly Savings</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">99.7%</p>
-            <p className="text-xs text-slate-500 mt-0.5">Uptime</p>
-          </div>
+      {/* Recent Products */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-800">Recent Products</h2>
+          <Link href="/dashboard/products" className="text-sm text-indigo-600 hover:underline font-medium">
+            View all →
+          </Link>
         </div>
-      </Card>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Product</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Price</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Cost</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Margin</th>
+                <th className="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Category</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400">Loading...</td></tr>
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <p className="text-slate-500 mb-3">No products yet. Start by adding your first product!</p>
+                    <Link
+                      href="/dashboard/products"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+                    >
+                      <Package className="w-4 h-4" /> Add Product
+                    </Link>
+                  </td>
+                </tr>
+              ) : (
+                products.map((p) => {
+                  const m = margin(p.currentPrice, p.costPrice);
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-3">
+                        <p className="text-sm font-medium text-slate-900">{p.name}</p>
+                        {p.sku && <p className="text-xs text-slate-400 font-mono">{p.sku}</p>}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {p.currency} {p.currentPrice || '—'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <p className="text-sm text-slate-600">
+                          {p.currency} {p.costPrice || '—'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        {m !== null ? (
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            parseFloat(m) > 30 ? 'bg-emerald-100 text-emerald-700' :
+                            parseFloat(m) > 15 ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {m}%
+                          </span>
+                        ) : <span className="text-xs text-slate-400">—</span>}
+                      </td>
+                      <td className="px-6 py-3 text-center">
+                        {p.category ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            {p.category}
+                          </span>
+                        ) : <span className="text-xs text-slate-400">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link href="/dashboard/scraping" className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-shadow">
+          <Globe className="w-6 h-6 text-blue-500 mb-3" />
+          <h3 className="text-sm font-semibold text-slate-800">Test Scraping</h3>
+          <p className="text-xs text-slate-500 mt-1">Scrape a competitor URL and see real-time results</p>
+        </Link>
+        <Link href="/dashboard/simulator" className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl hover:shadow-md transition-shadow">
+          <TrendingUp className="w-6 h-6 text-emerald-500 mb-3" />
+          <h3 className="text-sm font-semibold text-slate-800">Price Simulator</h3>
+          <p className="text-xs text-slate-500 mt-1">Test different prices and see projected outcomes</p>
+        </Link>
+        <Link href="/dashboard/recommendations" className="p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-xl hover:shadow-md transition-shadow">
+          <Brain className="w-6 h-6 text-violet-500 mb-3" />
+          <h3 className="text-sm font-semibold text-slate-800">AI Recommendations</h3>
+          <p className="text-xs text-slate-500 mt-1">Review pricing suggestions generated by AI</p>
+        </Link>
+      </div>
     </div>
   );
 }

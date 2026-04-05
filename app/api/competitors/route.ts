@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { db } from '@/db';
 import { competitors } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { validateCompetitor } from '@/lib/validators';
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const orgId = searchParams.get('orgId') || 'demo-org';
     
-    const db = getDb();
+    const dbInstance = db;
     const result = await db
       .select()
       .from(competitors)
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const v = validation.data!;
     const orgId = body.organizationId || 'demo-org';
     
-    const db = getDb();
+    const dbInstance = db;
     const [newComp] = await db
       .insert(competitors)
       .values({

@@ -19,31 +19,20 @@ function formatLog(entry: LogEntry): string {
 
 function log(entry: LogEntry) {
   const formatted = formatLog(entry);
-  
   switch (entry.level) {
     case 'error': console.error(formatted); break;
     case 'warn': console.warn(formatted); break;
     default: console.log(formatted);
-  }
-  
-  // In production, also write to file or external service
-  if (process.env.NODE_ENV === 'production') {
-    // TODO: Send to logging service (e.g., Sentry, Logtail)
   }
 }
 
 export const logger = {
   debug: (message: string, module?: string, data?: Record<string, any>) => 
     log({ level: 'debug', message, timestamp: new Date().toISOString(), module, data }),
-  
   info: (message: string, module?: string, data?: Record<string, any>) => 
     log({ level: 'info', message, timestamp: new Date().toISOString(), module, data }),
-  
   warn: (message: string, module?: string, data?: Record<string, any>) => 
     log({ level: 'warn', message, timestamp: new Date().toISOString(), module, data }),
-  
   error: (message: string, module?: string, error?: Error, data?: Record<string, any>) => 
     log({ level: 'error', message, timestamp: new Date().toISOString(), module, data, error: error?.message }),
 };
-
-export default logger;

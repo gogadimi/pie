@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatCurrency(amount: number, currency: string = 'EUR'): string {
   const symbols: Record<string, string> = {
-    USD: '$', EUR: '€', GBP: '£', MKD: 'ден', JPY: '¥'
+    USD: '$', EUR: '€', GBP: '£', MKD: 'ден', JPY: '¥', CHF: 'Fr'
   };
   return `${symbols[currency] || ''}${amount.toFixed(2)}`;
 }
@@ -50,6 +50,11 @@ export async function retry<T>(
     }
   }
   throw new Error('Unreachable');
+}
+
+export function extractDomain(url: string): string {
+  try { return new URL(url).hostname; } 
+  catch { return url; }
 }
 
 export { logger } from './logger';

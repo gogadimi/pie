@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { checkDbConnection } from '@/lib/db';
+import { checkDbConnection } from '@/db';
 import { redis } from '@/lib/redis';
 
 export async function GET() {

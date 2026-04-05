@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { db } from '@/db';
 import * as schema from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { validateProduct } from '@/lib/validators';
@@ -13,8 +13,6 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    const db = getDb();
-    
     const result = await db
       .select({
         id: schema.products.id,
@@ -74,7 +72,6 @@ export async function POST(request: NextRequest) {
     const orgId = body.organizationId || 'demo-org';
     const sku = v.sku || generateSKU(v.name);
 
-    const db = getDb();
     const [newProduct] = await db
       .insert(schema.products)
       .values({

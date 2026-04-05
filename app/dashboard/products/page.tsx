@@ -1,348 +1,253 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
-import {
-  Plus,
-  Search,
-  Filter,
-  Package,
-  ArrowUpRight,
-  ArrowDownRight,
-  MoreHorizontal,
-} from "lucide-react";
-import { Badge, Card, Button, EmptyState } from "@/components/ui/common";
+import { useState, useEffect, useCallback } from 'react';
+import { useDashboard } from '../layout';
+import { Plus, Search, Trash2, Upload, ArrowLeft, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface Product {
   id: string;
   name: string;
-  sku: string;
-  currentPrice: string;
+  sku: string | null;
+  currentPrice: string | null;
+  costPrice: string | null;
   currency: string;
-  category: string;
-  source: string;
-  status: string;
-  createdAt: string;
-  competitorCount: number;
-  lastScraped: string;
-  priceChange7d: number;
+  category: string | null;
+  createdAt: string | null;
 }
 
 export default function ProductsPage() {
+  const { orgId, refreshStats } = useDashboard();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [newProduct, setNewProduct] = useState({
+    name: '', sku: '', currentPrice: '', costPrice: '', currency: 'EUR', category: '',
+  });
+  const [importing, setImporting] = useState(false);
 
-  // Form state
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("Electronics");
-
-  const fetchProducts = useCallback(async (q = "") => {
+  const fetchProducts = useCallback(() => {
     setLoading(true);
+    fetch(`/api/products?orgId=${orgId}&limit=100`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setProducts(data.products || []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [orgId]);
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  const handleAddProduct = async () => {
+    if (!newProduct.name) return;
     try {
-      const res = await fetch(`/api/products?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setProducts(data.data ?? []);
-    } catch {
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProducts(search);
-  }, [fetchProducts]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchProducts(search);
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-
-    if (!name.trim()) {
-      setFormError("Product name is required");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, sku, currentPrice: price, category }),
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newProduct, organizationId: orgId }),
       });
       const data = await res.json();
-
       if (data.success) {
-        // Reset and refetch
-        setName("");
-        setSku("");
-        setPrice("");
-        setCategory("Electronics");
+        fetchProducts();
+        refreshStats();
         setShowAdd(false);
-        fetchProducts(search);
-      } else {
-        setFormError(data.error ?? "Failed to create product");
+        setNewProduct({ name: '', sku: '', currentPrice: '', costPrice: '', currency: 'EUR', category: '' });
       }
-    } catch {
-      setFormError("Network error");
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const categories = ["Electronics", "Furniture", "Clothing", "Uncategorized"];
+  const handleImport = async () => {
+    try {
+      const lines = importText.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        const obj: any = {};
+        headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+        return obj;
+      });
+
+      const res = await fetch('/api/products/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: rows, organizationId: orgId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchProducts();
+        refreshStats();
+        setShowImport(false);
+        setImportText('');
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this product?')) return;
+    try {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      fetchProducts();
+      refreshStats();
+    } catch (e) { console.error(e); }
+  };
+
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.sku || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const margin = (price: string | null, cost: string | null) => {
+    if (!price || !cost || parseFloat(price) === 0) return null;
+    return ((parseFloat(price) - parseFloat(cost)) / parseFloat(price) * 100).toFixed(1);
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Products</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage and monitor your product catalog.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">Products</h1>
+          <p className="text-slate-500 mt-1">{products.length} products tracked</p>
         </div>
-        <Button onClick={() => setShowAdd(!showAdd)}>
-          <Plus className="w-4 h-4 mr-1.5" />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Product
+          </button>
+        </div>
       </div>
 
-      {/* Add product modal / inline form */}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search products or SKUs..."
+          className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Add Product Modal */}
       {showAdd && (
-        <Card>
-          <form
-            onSubmit={handleCreate}
-            className="p-6"
-          >
-            <h3 className="font-semibold text-slate-900 mb-4">
-              New Product
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Wireless Mouse"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAdd(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Add Product</h2>
+            <div className="space-y-3">
+              <input className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm" placeholder="Product name *" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+              <div className="grid grid-cols-2 gap-3">
+                <input className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm" placeholder="Current price" value={newProduct.currentPrice} onChange={e => setNewProduct({...newProduct, currentPrice: e.target.value})} />
+                <input className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm" placeholder="Cost price" value={newProduct.costPrice} onChange={e => setNewProduct({...newProduct, costPrice: e.target.value})} />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  SKU
-                </label>
-                <input
-                  type="text"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="e.g., MOUSE-WL-01"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Price (EUR) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 bg-white"
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
+              <div className="grid grid-cols-2 gap-3">
+                <input className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm" placeholder="SKU" value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
+                <select className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm" value={newProduct.currency} onChange={e => setNewProduct({...newProduct, currency: e.target.value})}>
+                  <option value="EUR">EUR</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="MKD">MKD</option>
                 </select>
               </div>
+              <input className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm" placeholder="Category" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
             </div>
-            {formError && (
-              <p className="text-sm text-red-600 mt-3">{formError}</p>
-            )}
-            <div className="flex items-center gap-3 mt-5">
-              <Button type="submit">Create Product</Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowAdd(false)}
-              >
-                Cancel
-              </Button>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
+              <button onClick={handleAddProduct} className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Add Product</button>
             </div>
-          </form>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Search & filters */}
-      <Card>
-        <div className="p-4 flex items-center gap-3 border-b border-slate-100">
-          <form onSubmit={handleSearch} className="flex-1 flex items-center">
-            <button
-              type="submit"
-              className="absolute left-3 z-10 p-0.5"
-            >
-              <Search className="w-4 h-4 text-slate-400" />
-            </button>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-              }}
-              placeholder="Search products by name or SKU…"
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowImport(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">Import Products (CSV)</h2>
+            <p className="text-xs text-slate-500 mb-3">Paste CSV with headers: name, currentPrice, costPrice, currency, category, sku</p>
+            <textarea
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-mono h-40 resize-none"
+              placeholder={`name,currentPrice,costPrice,currency\nProduct A,49.99,30.00,EUR\nProduct B,79.99,45.00,EUR`}
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
             />
-          </form>
-          <Button variant="secondary" size="sm">
-            <Filter className="w-3.5 h-3.5 mr-1.5" />
-            Filter
-          </Button>
-        </div>
-
-        {/* Table header */}
-        <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
-          <div className="col-span-4">Product</div>
-          <div className="col-span-1">Price</div>
-          <div className="col-span-2">Category</div>
-          <div className="col-span-1">Change</div>
-          <div className="col-span-1">Competitors</div>
-          <div className="col-span-2">Last Updated</div>
-          <div className="col-span-1"></div>
-        </div>
-
-        {/* Table rows */}
-        {loading ? (
-          <div className="p-5 animate-pulse space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-slate-200" />
-                  <div>
-                    <div className="h-3.5 w-40 rounded bg-slate-200" />
-                    <div className="h-3 w-20 rounded bg-slate-100 mt-1.5" />
-                  </div>
-                </div>
-                <div className="h-4 w-12 rounded bg-slate-200" />
-              </div>
-            ))}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowImport(false)} className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium">Cancel</button>
+              <button onClick={handleImport} disabled={!importText} className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">Import</button>
+            </div>
           </div>
-        ) : products.length === 0 ? (
-          <EmptyState
-            title="No products found"
-            description="Try adjusting your search or add a new product."
-            action={
-              <Button onClick={() => setShowAdd(true)}>
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Product
-              </Button>
-            }
-          />
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {products.map((p) => (
-              <Link
-                key={p.id}
-                href={`/dashboard/products/${p.id}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-5 py-4 hover:bg-slate-50 transition-colors group items-center"
-              >
-                {/* Product name */}
-                <div className="col-span-4 flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-indigo-50 transition-colors">
-                    <Package className="w-4 h-4 text-slate-400 group-hover:text-indigo-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">
-                      {p.name}
-                    </p>
-                    <p className="text-xs text-slate-400">{p.sku}</p>
-                  </div>
-                </div>
+        </div>
+      )}
 
-                {/* Price */}
-                <div className="col-span-1 text-sm font-semibold text-slate-900 tabular-nums md:pl-0 pl-13">
-                  €{Number(p.currentPrice).toFixed(2)}
-                </div>
-
-                {/* Category */}
-                <div className="col-span-2">
-                  <Badge variant="purple">{p.category}</Badge>
-                </div>
-
-                {/* Change */}
-                <div className="col-span-1">
-                  <span
-                    className={`text-sm font-medium flex items-center gap-0.5 ${
-                      p.priceChange7d > 0
-                        ? "text-emerald-600"
-                        : p.priceChange7d < 0
-                          ? "text-red-600"
-                          : "text-slate-400"
-                    }`}
-                  >
-                    {p.priceChange7d > 0 ? (
-                      <ArrowUpRight className="w-3 h-3" />
-                    ) : p.priceChange7d < 0 ? (
-                      <ArrowDownRight className="w-3 h-3" />
-                    ) : null}
-                    {p.priceChange7d >= 0 ? "+" : ""}
-                    {p.priceChange7d.toFixed(1)}%
-                  </span>
-                </div>
-
-                {/* Competitors */}
-                <div className="col-span-1 text-sm text-slate-600 tabular-nums">
-                  {p.competitorCount}
-                </div>
-
-                {/* Last updated */}
-                <div className="col-span-2 text-xs text-slate-400">
-                  {p.lastScraped
-                    ? new Date(p.lastScraped).toLocaleDateString("de-DE", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "—"}
-                </div>
-
-                {/* Actions */}
-                <div className="col-span-1 flex justify-end">
-                  <button className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400">
-                    <MoreHorizontal className="w-4 h-4" />
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Product</th>
+              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Price</th>
+              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Cost</th>
+              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Margin</th>
+              <th className="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Category</th>
+              <th className="px-6 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400">Loading...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center">
+                  <p className="text-slate-500 mb-3">No products found.</p>
+                  <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">
+                    <Plus className="w-4 h-4" /> Add your first product
                   </button>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Card>
+                </td>
+              </tr>
+            ) : filtered.map((p) => {
+              const m = margin(p.currentPrice, p.costPrice);
+              return (
+                <tr key={p.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-3">
+                    <Link href={`/dashboard/products/${p.id}`} className="text-sm font-medium text-indigo-600 hover:underline">
+                      {p.name}
+                    </Link>
+                    {p.sku && <p className="text-xs text-slate-400 font-mono mt-0.5">{p.sku}</p>}
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    <span className="text-sm font-semibold text-slate-800">{p.currency} {p.currentPrice || '—'}</span>
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    <span className="text-sm text-slate-600">{p.currency} {p.costPrice || '—'}</span>
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    {m !== null ? (
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${parseFloat(m) > 30 ? 'bg-emerald-100 text-emerald-700' : parseFloat(m) > 15 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                        {m}%
+                      </span>
+                    ) : <span className="text-xs text-slate-400">—</span>}
+                  </td>
+                  <td className="px-6 py-3 text-center">
+                    {p.category ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">{p.category}</span> : <span className="text-xs text-slate-400">—</span>}
+                  </td>
+                  <td className="px-6 py-3">
+                    <button onClick={() => handleDelete(p.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

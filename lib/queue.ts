@@ -7,14 +7,10 @@ export const scrapeQueue = new Queue('scrape-queue', {
     attempts: 3,
     backoff: {
       type: 'exponential',
-      delay: 5000,
+      delay: 10000,
     },
-    removeOnComplete: {
-      age: 86400, // keep for 24 hours
-    },
-    removeOnFail: {
-      age: 604800, // keep for 7 days
-    },
+    removeOnComplete: { age: 86400 },
+    removeOnFail: { age: 604800 },
   },
 });
 

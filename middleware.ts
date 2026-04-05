@@ -1,39 +1,26 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Define public routes
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/pricing',
-  '/signup(.*)',
-  '/login(.*)',
-  '/api/health',
-  '/api/webhooks/stripe',
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-  // Allow public routes (no auth required)
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
+// Simple locale detection middleware
+// Stores locale preference in cookie, no URL prefix needed
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  
+  // Check for existing locale cookie
+  const localeCookie = request.cookies.get('NEXT_LOCALE');
+  if (!localeCookie) {
+    // Detect from Accept-Language header
+    const acceptLang = request.headers.get('accept-language') || '';
+    const locale = acceptLang.startsWith('mk') ? 'mk' : 'en';
+    response.cookies.set('NEXT_LOCALE', locale, {
+      maxAge: 365 * 24 * 60 * 60,
+      path: '/',
+    });
   }
-
-  // In development, allow access without auth for testing
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next();
-  }
-
-  // For all other routes, require authentication
-  const { userId } = await auth();
-  if (!userId) {
-    // Redirect to sign-in
-    const signInUrl = new URL('/login', req.url);
-    signInUrl.searchParams.set('redirect_url', req.url);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  return NextResponse.next();
-});
+  
+  return response;
+}
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  matcher: ['/((?!api|_next|.*\..*).*)'],
 };

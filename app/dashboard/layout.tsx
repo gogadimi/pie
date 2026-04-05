@@ -1,5 +1,7 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import { MobileNav } from '@/components/responsive/mobile-nav';
+import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
@@ -10,18 +12,9 @@ import {
   Menu, X,
 } from 'lucide-react';
 
-const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Products', href: '/dashboard/products', icon: Package },
-  { label: 'Competitors', href: '/dashboard/competitors', icon: Users2 },
-  { label: 'Price Map', href: '/dashboard/price-map', icon: Map },
-  { label: 'Scraping', href: '/dashboard/scraping', icon: Globe },
-  { label: 'AI Agent', href: '/dashboard/recommendations', icon: Brain },
-  { label: 'Simulator', href: '/dashboard/simulator', icon: BarChart3 },
-  { label: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
-  { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
-];
+const navKeys = ['dashboard','products','competitors','priceMap','scraping','aiAgent','simulator','analytics','alerts','settings'];
+const navHrefs = ['/dashboard','/dashboard/products','/dashboard/competitors','/dashboard/price-map','/dashboard/scraping','/dashboard/recommendations','/dashboard/simulator','/dashboard/analytics','/dashboard/alerts','/dashboard/settings'];
+const navIcons = [LayoutDashboard, Package, Users2, Map, Globe, Brain, BarChart3, TrendingUp, Bell, Settings];
 
 interface Stats {
   totalProducts: number;
@@ -54,6 +47,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const t = useTranslations('common');
+  const tNav = useTranslations('nav');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [orgId] = useState('demo-org');
@@ -108,20 +103,23 @@ export default function DashboardLayout({
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto py-4 px-2">
             <ul className="space-y-1">
-              {navItems.map((item) => {
-                const active = pathname === item.href;
+              {navKeys.map((key, i) => {
+                const href = navHrefs[i];
+                const Icon = navIcons[i];
+                const active = pathname === href;
+                const label = tNav(key);
                 return (
-                  <li key={item.href}>
+                  <li key={href}>
                     <Link
-                      href={item.href}
+                      href={href}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative
                         ${active ? 'bg-indigo-600/15 text-indigo-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}
                         ${collapsed ? 'justify-center' : ''}`}
-                      title={collapsed ? item.label : undefined}
+                      title={collapsed ? label : undefined}
                     >
-                      <item.icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
-                      {!collapsed && item.label}
-                      {item.label === 'Alerts' && (stats?.unreadAlerts || 0) > 0 && !collapsed && (
+                      <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
+                      {!collapsed && label}
+                      {key === 'alerts' && (stats?.unreadAlerts || 0) > 0 && !collapsed && (
                         <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
                           {(stats?.unreadAlerts || 0) > 9 ? '9+' : stats?.unreadAlerts || 0}
                         </span>
@@ -137,15 +135,16 @@ export default function DashboardLayout({
           {/* Footer */}
           {!collapsed && (
             <div className="px-4 pb-4 border-t border-slate-800/60 pt-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center shrink-0">
                   <span className="text-indigo-400 text-xs font-semibold">D</span>
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-xs font-medium text-white truncate">Demo Org</span>
-                  <span className="text-[10px] text-slate-400 truncate">Starter plan</span>
+                  <span className="text-xs font-medium text-white truncate">{t("demoOrg")}</span>
+                  <span className="text-[10px] text-slate-400 truncate">{t("starterPlan")}</span>
                 </div>
               </div>
+              <LanguageSwitcher />
             </div>
           )}
         </aside>
@@ -157,12 +156,13 @@ export default function DashboardLayout({
             <button onClick={() => setMobileOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg">
               <Menu className="w-5 h-5 text-slate-600" />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
                 <span className="text-white font-bold text-xs">P</span>
               </div>
               <span className="font-semibold text-slate-900">PIE</span>
             </div>
+            <LanguageSwitcher />
           </header>
 
           {/* Page content */}

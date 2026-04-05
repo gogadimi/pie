@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  Globe,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -31,6 +32,11 @@ const navItems = [
     label: "Competitors",
     href: "/dashboard/competitors",
     icon: Users2,
+  },
+  {
+    label: "Scraping",
+    href: "/dashboard/scraping",
+    icon: Globe,
   },
   {
     label: "Price Map",

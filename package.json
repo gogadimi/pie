@@ -13,6 +13,7 @@
     "worker": "tsx worker/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@clerk/nextjs": "^7.0.8",
     "@types/better-sqlite3": "^7.6.13",
     "@upstash/redis": "^1.37.0",
@@ -21,7 +22,11 @@
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.7.0",
     "next": "16.2.2",
+    "playwright": "^1.59.1",
     "postgres": "^3.4.8",
+    "puppeteer": "^24.40.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

@@ -23,6 +23,7 @@ export async function addScrapeJob(data: {
   competitorId: string;
   productId: string;
   organizationId: string;
+  retryCount?: number;
 }) {
   await scrapeQueue.add('scrape-url', data);
 }

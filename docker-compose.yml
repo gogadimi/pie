@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: pie
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for BullMQ Queue
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PIE Web Application
+  web:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/pie
+      UPSTASH_REDIS_REST_URL: http://redis:6379
+      UPSTASH_REDIS_REST_TOKEN: ''
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Scraping Worker
+  worker:
+    build: .
+    restart: always
+    command: ["node", "worker/index.js"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/pie
+      UPSTASH_REDIS_REST_URL: http://redis:6379
+      UPSTASH_REDIS_REST_TOKEN: ''
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:

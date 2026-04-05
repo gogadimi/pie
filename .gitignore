@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Test artifacts
+coverage/
+.playwright/
+test-results/
+
+# Production
+.env.production.local
+
+# IDE
+.idea/
+.vscode/settings.json

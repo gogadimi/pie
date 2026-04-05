@@ -73,7 +73,9 @@ You are working with your user, **Goga**.
       messages: apiMessages,
     });
 
-    const replyText = response.content[0].text || "Sorry, I couldn't process that.";
+    const contentBlocks = response.content as unknown as Array<{ type: string; text?: string }>;
+    const textBlock = contentBlocks.find((b) => b.type === 'text' || b.type === 'text_block');
+    const replyText = textBlock?.text || "Sorry, I couldn't process that.";
 
     // 5. Update conversation history in Redis
     chatHistory.push({ role: 'assistant', content: replyText });

@@ -5,5 +5,22 @@
   "regions": ["fra1"],
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/scrape",
+      "schedule": "0 */6 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/stream",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-transform" },
+        { "key": "X-Accel-Buffering", "value": "no" },
+        { "key": "Content-Type", "value": "text/event-stream" },
+        { "key": "Connection", "value": "keep-alive" }
+      ]
+    }
+  ]
 }

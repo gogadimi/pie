@@ -48,3 +48,22 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - ✅ Vercel deployment config
 - ✅ Production environment template
 - ✅ Optimized Next.js config
+
+
+## 🧪 Running Tests
+
+```bash
+# Unit tests
+npm test
+
+# Integration tests (requires running dev server)
+npm run dev &
+npm run test:e2e
+```
+
+## 📈 Monitoring & Health
+
+```bash
+curl http://localhost:3000/api/health
+# Returns: { status: "healthy", services: { database: { status: "ok" }, redis: { status: "ok" } } }
+```
